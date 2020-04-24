@@ -2,10 +2,11 @@
 
 (defpackage :com.stone.nested-lists
   (:use :common-lisp)
-  (:export :nested-nth))
+  (:export :nested-nth
+           :find-nested-index))
 
 (defpackage :com.stone.solver-utils
-  (:use :common-lisp)
+  (:use :common-lisp :com.stone.nested-lists)
   (:export :*goal-state*))
 
 
