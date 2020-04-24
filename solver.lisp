@@ -43,6 +43,12 @@
   "Returns the location of the :EMPTY space in the puzzle."
   (find-nested-index state :empty))
 
+(defun (setf nested-nth) (new-value index-list nested-list)
+  (let ((replace-row (get-row index-list nested-list)))
+    (setf (nth (car index-list) replace-row) new-value)
+    (format t "New state: ~a~%" nested-list)
+    (format t "Replaced row: ~a" replace-row)))
+
 ;; TODO: I can't setf with nested-nth, so I need to figure out either how to be able to
 ;; or use a different function (like setfing the row instead of the item, which I think would work)l
 (defun swap-items-nested (original-list first-item second-item)
