@@ -18,10 +18,18 @@
 (defgeneric move-score (state)
   (:documentation "Scores a node based on various criteria, such as Manhattan distance or cost."))
 
-(defun manhattan-distance (current-pos goal-pos)
+;; TODO: Consider using something possibly more efficient than nested destructuring-binds
+(defun manhattan-distance (first-point second-point)
   "Returns the Manhattan distance between two points."
-  (destructuring-bind (cx cy gx gy) (append current-pos goal-pos)
-    (+ (abs (- gx cx)) (abs (- gy cy)))))
+  (destructuring-bind (x1 y1) first-point
+    (destructuring-bind (x2 y2) second-point
+      (+ (abs (- x2 x1)) (abs (- y2 y1))))))
+
+(defun tile-goal-distance (tile state)
+  "Returns the Manhattan distance between a tile's current and goal positions."
+  (let ((goal-position (find-nested-index *goal-state* tile))
+        (current-position (find-nested-index state tile)))
+    (manhattan-distance current-position goal-position)))
 
 (defun empty-location (state)
   "Returns the location of the :EMPTY space in the puzzle."
@@ -41,6 +49,7 @@
   (let* ((new-empty-loc (new-empty-location state action))
          (moved-element (nested-nth new-empty-loc state)))
     (list :emptyloc new-empty-loc
+          :moved-tile moved-element
           :state (if moved-element (swap-items-nested state :empty moved-element) nil))))
 
 (defun action-legal-p (action-result)
@@ -53,12 +62,22 @@
   (let ((legal-actions-list ()))
     (dolist (action *action-choices*)
      (let* ((action-result (take-action state action))
-            (result-state (getf action-result :state)))
+            (result-state (getf action-result :state))
+            (moved-tile (getf action-result :moved-tile)))
        (if (action-legal-p action-result)
-           (push (list :action action :result result-state) legal-actions-list))))
+           (push (list :action action :result result-state :tile moved-tile) legal-actions-list))))
     legal-actions-list))
 
 (defun possible-actions (state frontier explored)
   "Returns a list of all of the possible actions that can be taken that haven't already."
-  (let ((legal-actions (legal-actions state)))
-    (format t "Possible actions: ~a" legal-actions)))
+  (let ((legal-action-metadata (legal-actions state))
+        (frontier-states (mapcar #'state frontier))
+        (explored-states (mapcar #'state explored)))
+    (format t "Possible actions: ~a" legal-action-metadata)))
+;; TODO: Check if all of the actions are legal and decide what to do if they aren't
+(defun take-actions-list (state actions)
+  "Takes the list of actions on the given state. Short-circuits to nil if any actions are illegal."
+  (loop for action in actions
+        for result = (take-action (or current-state state) action)
+        for current-state = (getf result :state)
+        finally (return current-state)))
