@@ -43,19 +43,22 @@
     (list :emptyloc new-empty-loc
           :state (if moved-element (swap-items-nested state :empty moved-element) nil))))
 
-;; TODO: Perhaps integrate this into the take-action function?
 (defun action-legal-p (action-result)
   "Verifies that a given action results in a legal state."
   (let ((result-state (getf action-result :state)))
     (not (null result-state))))
 
+(defun legal-actions (state)
+  "Checks which actions are legal (i.e. don't move off the board) to take on the current state."
+  (let ((legal-actions-list ()))
+    (dolist (action *action-choices*)
+     (let* ((action-result (take-action state action))
+            (result-state (getf action-result :state)))
+       (if (action-legal-p action-result)
+           (push (list :action action :result result-state) legal-actions-list))))
+    legal-actions-list))
+
 (defun possible-actions (state frontier explored)
   "Returns a list of all of the possible actions that can be taken that haven't already."
-  (let ((legal-actions ()))
-    ;; Check if the actions are legal without checking for context
-    (dolist (action *action-choices*)
-      (let* ((action-result (take-action state action))
-             (result-state (getf action-result :state)))
-        (if (action-legal-p action-result)
-            (push (list :action action :result result-state) legal-actions))))
+  (let ((legal-actions (legal-actions state)))
     (format t "Possible actions: ~a" legal-actions)))
