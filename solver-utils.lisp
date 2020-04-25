@@ -55,7 +55,7 @@
     ;; Check if the actions are legal without checking for context
     (dolist (action *action-choices*)
       (let* ((action-result (take-action state action))
-            (result-state (getf action-result :state)))
+             (result-state (getf action-result :state)))
         (if (action-legal-p action-result)
             (push (list :action action :result result-state) legal-actions))))
     (format t "Possible actions: ~a" legal-actions)))
