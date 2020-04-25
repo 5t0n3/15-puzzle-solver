@@ -10,4 +10,6 @@
   (:use :common-lisp :com.stone.nested-lists)
   (:export :*goal-state*))
 
-
+;; Load the files in the proper order
+(load "nested-lists.lisp")
+(load "solver-utils.lisp")

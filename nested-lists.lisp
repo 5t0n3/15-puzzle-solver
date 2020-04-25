@@ -1,5 +1,8 @@
 (in-package :com.stone.nested-lists)
 
+(define-condition negative-index-error (error) ()
+  (:documentation "Represents an attempt to access a negative index in a list."))
+
 (defun find-nested-index (nested-list item)
   "Finds the outer and inner indices of an element in a list of lists."
   (loop for row in nested-list
@@ -7,10 +10,18 @@
         for item-index = (position item row)
         if item-index return (list item-index row-num)))
 
+(defmacro error-negative-index (index-list callback-fn &rest callback-args)
+  `(restart-case (error 'negative-index-error)
+    (return-nil () nil)
+    (make-positive () (funcall ,callback-fn (mapcar #'abs ,index-list) ,@callback-args))
+    (use-values (inner outer) (funcall ,callback-fn (list inner outer) ,@callback-args))))
+
 (defun nested-nth (index-list nested-list)
-  "Returns the element at the specified indicies in a list of lists."
+  "Returns the element at the specified indices in a list of lists. Errors on a negative index."
   (destructuring-bind (inner-idx outer-idx) index-list
-    (nth inner-idx (nth outer-idx nested-list))))
+    (cond
+      ((some #'minusp index-list) (error-negative-index index-list 'nested-nth nested-list))
+      (t (nth inner-idx (nth outer-idx nested-list))))))
 
 ;; TODO: Improve on the documentation for this function
 (defun get-row (index-list nested-list)
@@ -30,4 +41,3 @@
     (setf (nested-nth first-idx copied-list) second-item)
     (setf (nested-nth second-idx copied-list) first-item)
     copied-list))
-
