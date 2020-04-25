@@ -27,33 +27,35 @@
   "Returns the location of the :EMPTY space in the puzzle."
   (find-nested-index state :empty))
 
-;; These functions seem to be getting really long, so I should consider refactoring them
-;; TODO: The if statement at the end of this function should be a separate function,
-;; and so should the case expression for new-empty-loc
+(defun new-empty-location (state action)
+  "Returns the new location of the :EMPTY space after taking an action on the given state."
+  (destructuring-bind (empty-x empty-y) (empty-location state)
+    (case action
+      (:up (list empty-x (1+ empty-y)))
+      (:down (list empty-x (- empty-y 1)))
+      (:left (list (1+ empty-x) empty-y))
+      (:right (list (- empty-x 1) empty-y)))))
+
 (defun take-action (state action)
   "Executes an action on a given state and returns the resulting state, assuming it is legal."
-  (destructuring-bind (empty-x empty-y) (empty-location state)
-    (let* ((new-empty-loc (case action
-                           (:up (list empty-x (1+ empty-y)))
-                           (:down (list empty-x (- empty-y 1)))
-                           (:left (list (1+ empty-x) empty-y))
-                           (:right (list (- empty-x 1) empty-y))))
-           (moved-element (nested-nth new-empty-loc state)))
-      (list :emptyloc new-empty-loc
-            :state (if moved-element (swap-items-nested state :empty moved-element) nil)))))
+  (let* ((new-empty-loc (new-empty-location state action))
+         (moved-element (nested-nth new-empty-loc state)))
+    (list :emptyloc new-empty-loc
+          :state (if moved-element (swap-items-nested state :empty moved-element) nil))))
 
 ;; TODO: Perhaps integrate this into the take-action function?
-(defun action-legal-p (action state)
-  "Verifies that a given action is legal in a given state."
-  (let ((action-result (take-action state action)))
-    (destructuring-bind (result-x result-y) (getf action-result :emptyloc)
-     (values (and (<= result-x 3) (<= result-y 3)) (getf action-result :state)))))
+(defun action-legal-p (action-result)
+  "Verifies that a given action results in a legal state."
+  (let ((result-state (getf action-result :state)))
+    (not (null result-state))))
 
 (defun possible-actions (state frontier explored)
   "Returns a list of all of the possible actions that can be taken that haven't already."
   (let ((legal-actions ()))
     ;; Check if the actions are legal without checking for context
     (dolist (action *action-choices*)
-      (multiple-value-bind (valid result-state) (action-legal-p action state)
-        (if valid (push (list :action action :result result-state) legal-actions))))
+      (let* ((action-result (take-action state action))
+            (result-state (getf action-result :state)))
+        (if (action-legal-p action-result)
+            (push (list :action action :result result-state) legal-actions))))
     (format t "Possible actions: ~a" legal-actions)))
