@@ -15,7 +15,7 @@
 ;; TODO: Improve on the documentation for this function
 (defun get-row (index-list nested-list)
   "Returns the sublist indise nested-list corresponding to the second index in index-list."
-  (destructuring-bind (_ outer-idx) index-list
+  (let ((outer-idx (nth 1 index-list)))
     (nth outer-idx nested-list)))
 
 (defun (setf nested-nth) (new-value index-list nested-list)
