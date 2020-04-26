@@ -4,7 +4,9 @@
   (:use :common-lisp)
   (:export :nested-nth
            :find-nested-index
-           :swap-items-nested))
+           :swap-items-nested
+           :negative-index-error
+           :return-nil))
 
 (defpackage :com.stone.solver-utils
   (:use :common-lisp :com.stone.nested-lists)
