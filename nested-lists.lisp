@@ -10,17 +10,16 @@
         for item-index = (position item row)
         if item-index return (list item-index row-num)))
 
-(defmacro error-negative-index (index-list callback-fn &rest callback-args)
+(defmacro negative-index-restarts (index-list callback-fn &rest callback-args)
   `(restart-case (error 'negative-index-error)
     (return-nil () nil)
-    (make-positive () (funcall ,callback-fn (mapcar #'abs ,index-list) ,@callback-args))
-    (use-values (inner outer) (funcall ,callback-fn (list inner outer) ,@callback-args))))
+    (make-positive () (funcall ,callback-fn (mapcar #'abs ,index-list) ,@callback-args))))
 
 (defun nested-nth (index-list nested-list)
   "Returns the element at the specified indices in a list of lists. Errors on a negative index."
   (destructuring-bind (inner-idx outer-idx) index-list
     (cond
-      ((some #'minusp index-list) (error-negative-index index-list 'nested-nth nested-list))
+      ((some #'minusp index-list) (negative-index-restarts index-list 'nested-nth nested-list))
       (t (nth inner-idx (nth outer-idx nested-list))))))
 
 ;; TODO: Improve on the documentation for this function

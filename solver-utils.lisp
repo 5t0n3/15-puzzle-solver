@@ -1,9 +1,10 @@
 (in-package :com.stone.solver-utils)
 
+;; TODO: I haven't really used this anywhere, so I should either use it or get rid of it
 (defclass puzzle-node ()
   ((current-state :initarg :state :reader state)
    (parent-node :initarg :parent :reader parent)
-   (previous-action :initarg :action)
+   (previous-action :initarg :action :reader previous-action)
    (path-cost :initform 0 :initarg :cost :reader cost))
   (:documentation "A node representing a possible state of the 15 puzzle along with other information."))
 
@@ -13,10 +14,6 @@
                              (13 14 15 :empty)))
 
 (defvar *action-choices* '(:up :down :left :right))
-
-;; TODO: Maybe implement this as a function? It's more of an action thing than a node thing
-(defgeneric move-score (state)
-  (:documentation "Scores a node based on various criteria, such as Manhattan distance or cost."))
 
 ;; TODO: Consider using something possibly more efficient than nested destructuring-binds
 (defun manhattan-distance (first-point second-point)
@@ -58,15 +55,16 @@
   (let ((result-state (getf action-result :state)))
     (not (null result-state))))
 
+;; TODO: This could probably be implemented with a plain loop rather than a dolist loop
 (defun legal-actions (state)
   "Checks which actions are legal (i.e. don't move off the board) to take on the current state."
   (let ((legal-actions-list ()))
     (dolist (action *action-choices*)
-     (let* ((action-result (take-action state action))
-            (result-state (getf action-result :state))
-            (moved-tile (getf action-result :moved-tile)))
-       (if (action-legal-p action-result)
-           (push (list :action action :result result-state :tile moved-tile) legal-actions-list))))
+      (let* ((action-result (take-action state action))
+             (result-state (getf action-result :state))
+             (moved-tile (getf action-result :moved-tile)))
+        (if (action-legal-p action-result)
+            (push (list :action action :result result-state :tile moved-tile) legal-actions-list))))
     legal-actions-list))
 
 (defun possible-actions (state frontier explored)
@@ -75,6 +73,7 @@
         (frontier-states (mapcar #'state frontier))
         (explored-states (mapcar #'state explored)))
     (format t "Possible actions: ~a" legal-action-metadata)))
+
 ;; TODO: Check if all of the actions are legal and decide what to do if they aren't
 (defun take-actions-list (state actions)
   "Takes the list of actions on the given state. Short-circuits to nil if any actions are illegal."
