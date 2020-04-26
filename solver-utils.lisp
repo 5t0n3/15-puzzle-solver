@@ -5,7 +5,8 @@
   ((current-state :initarg :state :reader state)
    (parent-node :initarg :parent :reader parent)
    (previous-action :initarg :action :reader previous-action)
-   (path-cost :initform 0 :initarg :cost :reader cost))
+   (path-cost :initform 0 :initarg :cost :reader cost)
+   (moved-tile :initarg :tile :reader moved-tile)
   (:documentation "A node representing a possible state of the 15 puzzle along with other information."))
 
 (defparameter *goal-state* '((1 2 3 4)
@@ -73,6 +74,8 @@
         (frontier-states (mapcar #'state frontier))
         (explored-states (mapcar #'state explored)))
     (format t "Possible actions: ~a" legal-action-metadata)))
+
+;; TODO: Implement a way to sort the actions on a state based on their associated cost
 
 ;; TODO: Check if all of the actions are legal and decide what to do if they aren't
 (defun take-actions-list (state actions)
