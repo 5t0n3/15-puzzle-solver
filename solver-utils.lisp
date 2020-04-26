@@ -1,12 +1,17 @@
 (in-package :com.stone.solver-utils)
 
-;; TODO: I haven't really used this anywhere, so I should either use it or get rid of it
+;; TODO: Implement error handling of illegal moves rather than just returning nil as the state
+
+(defclass node-metadata ()
+  ((previous-action :initarg :action :reader previous-action)
+   (moved-tile :initarg :tile :reader moved-tile))
+  (:documentation "Represents some metadata about a node."))
+
 (defclass puzzle-node ()
   ((current-state :initarg :state :reader state)
    (parent-node :initarg :parent :reader parent)
-   (previous-action :initarg :action :reader previous-action)
    (path-cost :initform 0 :initarg :cost :reader cost)
-   (moved-tile :initarg :tile :reader moved-tile)
+   (metadata :initarg :metadata :reader metadata))
   (:documentation "A node representing a possible state of the 15 puzzle along with other information."))
 
 (defparameter *goal-state* '((1 2 3 4)
@@ -43,14 +48,29 @@
       (:right (list (- empty-x 1) empty-y)))))
 
 (defun take-action (state action)
-  "Executes the given action on the state, or returns nil if the action isn't legal."
+  "Executes the given action on the state and returns the result along with some metadata."
   (handler-bind ((negative-index-error #'(lambda () (invoke-restart 'return-nil))))
     (let* ((new-empty-loc (new-empty-location state action))
            (moved-element (nested-nth new-empty-loc state)))
-      (list :emptyloc new-empty-loc
-            :moved-tile moved-element
-            :state (if moved-element (swap-items-nested state :empty moved-element) nil)))))
+      (list :moved-tile moved-element
+            :state (if moved-element
+                       (swap-items-nested state :empty moved-element)
+                       nil)))))
 
+;; TODO: Improve the documentation for this function
+;; TODO: This could probably be implemented as a method as well
+(defun take-action-on-node (node action)
+  "Executes an action on the given node, returning a new node with its metadata updated."
+  (let* ((previous-state (state node))
+         (leading-cost (cost node))
+         (new-state-data (take-action previous-state action))
+         (resulting-state (getf new-state-data :state)))
+    (make-instance 'puzzle-node :cost (1+ leading-cost)
+                                :action action
+                                :parent node
+                                :state resulting-state)))
+
+;; TODO: Try writing action-legal-p without relying on take-action (I'm not sure if this is possible)
 (defun action-legal-p (action-result)
   "Verifies that a given action results in a legal state."
   (let ((result-state (getf action-result :state)))
