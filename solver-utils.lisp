@@ -45,12 +45,13 @@
       (:right (list (- empty-x 1) empty-y)))))
 
 (defun take-action (state action)
-  "Executes an action on a given state and returns the resulting state, assuming it is legal."
-  (let* ((new-empty-loc (new-empty-location state action))
-         (moved-element (nested-nth new-empty-loc state)))
-    (list :emptyloc new-empty-loc
-          :moved-tile moved-element
-          :state (if moved-element (swap-items-nested state :empty moved-element) nil))))
+  "Executes the given action on the state, or returns nil if the action isn't legal."
+  (handler-bind ((negative-index-error #'(lambda () (invoke-restart 'return-nil))))
+    (let* ((new-empty-loc (new-empty-location state action))
+           (moved-element (nested-nth new-empty-loc state)))
+      (list :emptyloc new-empty-loc
+            :moved-tile moved-element
+            :state (if moved-element (swap-items-nested state :empty moved-element) nil)))))
 
 (defun action-legal-p (action-result)
   "Verifies that a given action results in a legal state."
@@ -80,4 +81,5 @@
   (loop for action in actions
         for result = (take-action (or current-state state) action)
         for current-state = (getf result :state)
-        finally (return current-state)))
+        unless (action-legal-p result) do (return nil)
+          finally (return current-state)))
