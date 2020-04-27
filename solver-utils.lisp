@@ -4,13 +4,13 @@
 
 (defclass node-metadata ()
   ((previous-action :initarg :action :reader previous-action)
+   (cost :initform 0 :initarg :cost :reader cost)
    (moved-tile :initarg :tile :reader moved-tile))
   (:documentation "Represents some metadata about a node."))
 
 (defclass puzzle-node ()
   ((current-state :initarg :state :reader state)
    (parent-node :initarg :parent :reader parent)
-   (path-cost :initform 0 :initarg :cost :reader cost)
    (metadata :initarg :metadata :reader metadata))
   (:documentation "A node representing a possible state of the 15 puzzle along with other information."))
 
@@ -105,3 +105,5 @@
         for current-state = (getf result :state)
         unless (action-legal-p result) do (return nil)
           finally (return current-state)))
+
+;; TODO: In the way of solving the puzzle, take all legal actions and compare them via scores
