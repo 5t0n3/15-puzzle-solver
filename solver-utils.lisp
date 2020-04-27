@@ -2,6 +2,7 @@
 
 ;; TODO: Implement error handling of illegal moves rather than just returning nil as the state
 
+;; TODO: Consider renaming cost slot to something more descriptive
 (defclass node-metadata ()
   ((previous-action :initarg :action :reader previous-action)
    (cost :initform 0 :initarg :cost :reader cost)
@@ -13,6 +14,14 @@
    (parent-node :initarg :parent :reader parent)
    (metadata :initarg :metadata :reader metadata))
   (:documentation "A node representing a possible state of the 15 puzzle along with other information."))
+
+;; TODO: Improve the documentation for this function
+(defgeneric node-tile-score (node tile)
+  (:documentation "Returns a rating of the cost associated with a tile in the supplied node's state."))
+
+(defmethod node-tile-score ((node puzzle-node) tile)
+  (let ((num-moves (cost (metadata node))))
+    (+ num-moves (tile-goal-distance tile (state node)))))
 
 (defparameter *goal-state* '((1 2 3 4)
                              (5 6 7 8)
@@ -98,6 +107,12 @@
             (push (list :action action :result result-state :tile moved-tile) legal-actions-list))))
     legal-actions-list))
 
+;; TODO: Once the frontier/explored sets are implemented, add them as parameters to this
+;; and check for membership
+(defun node-legal-actions (node)
+  (let ((current-state (state node)))
+    (legal-actions current-state)))
+
 (defun possible-actions (state frontier explored)
   "Returns a list of all of the possible actions that can be taken that haven't already."
   (let ((legal-action-metadata (legal-actions state))
@@ -105,19 +120,13 @@
         (explored-states (mapcar #'state explored)))
     (format t "Possible actions: ~a" legal-action-metadata)))
 
-;; TODO: Once the frontier/explored sets are implemented, add them as parameters to this
-;; and check for membership
-(defun node-legal-actions (node)
-  (let ((current-state (state node)))
-    (legal-actions current-state)))
-
 ;; TODO: Implement a way to sort the actions on a state based on their associated cost
 
 ;; TODO: Check if all of the actions are legal and decide what to do if they aren't
 (defun take-actions-list (state actions)
   "Takes the list of actions on the given state. Short-circuits to nil if any actions are illegal."
   (loop for action in actions
-        for result = (take-action (or current-state state) action)
+        for result = (action-transform-state (or current-state state) action)
         for current-state = (getf result :state)
         unless (action-legal-p result) do (return nil)
           finally (return current-state)))
