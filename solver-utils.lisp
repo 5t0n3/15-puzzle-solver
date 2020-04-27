@@ -23,6 +23,14 @@
   (let ((num-moves (cost (metadata node))))
     (+ num-moves (tile-goal-distance tile (state node)))))
 
+(defgeneric lowest-scored-action (node1 node2)
+  (:documentation "Returns the node associated with the lowest cost by the node-tile-score method."))
+
+(defmethod lowest-scored-action ((node1 puzzle-node) (node2 puzzle-node))
+  (let ((node1-cost (cost (metadata node1)))
+        (node2-cost (cost (metadata node2))))
+    (if (< node1-cost node2-cost) node1 node2)))
+
 (defparameter *goal-state* '((1 2 3 4)
                              (5 6 7 8)
                              (9 10 11 12)
@@ -119,8 +127,6 @@
         (frontier-states (mapcar #'state frontier))
         (explored-states (mapcar #'state explored)))
     (format t "Possible actions: ~a" legal-action-metadata)))
-
-;; TODO: Implement a way to sort the actions on a state based on their associated cost
 
 ;; TODO: Check if all of the actions are legal and decide what to do if they aren't
 (defun take-actions-list (state actions)
