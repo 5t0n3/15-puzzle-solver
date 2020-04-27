@@ -47,28 +47,33 @@
       (:left (list (1+ empty-x) empty-y))
       (:right (list (- empty-x 1) empty-y)))))
 
-(defun take-action (state action)
+(defun action-transform-state (state action)
   "Executes the given action on the state and returns the result along with some metadata."
-  (handler-bind ((negative-index-error #'(lambda () (invoke-restart 'return-nil))))
+  (handler-bind ((negative-index-error #'(lambda (c)
+                                           (declare (ignore c))
+                                           (invoke-restart 'return-nil))))
     (let* ((new-empty-loc (new-empty-location state action))
-           (moved-element (nested-nth new-empty-loc state)))
-      (list :moved-tile moved-element
-            :state (if moved-element
-                       (swap-items-nested state :empty moved-element)
+           (moved-tile (nested-nth new-empty-loc state)))
+      (list :moved-tile moved-tile
+            :state (if moved-tile
+                       (swap-items-nested state :empty moved-tile)
                        nil)))))
 
-;; TODO: Improve the documentation for this function
-;; TODO: This could probably be implemented as a method as well
-(defun take-action-on-node (node action)
-  "Executes an action on the given node, returning a new node with its metadata updated."
-  (let* ((previous-state (state node))
-         (leading-cost (cost node))
-         (new-state-data (take-action previous-state action))
-         (resulting-state (getf new-state-data :state)))
-    (make-instance 'puzzle-node :cost (1+ leading-cost)
-                                :action action
-                                :parent node
-                                :state resulting-state)))
+;; TODO: This might be better implemented as a method
+(defun update-metadata (action action-result parent-node)
+  (let ((parent-metadata (metadata parent-node))
+        (moved-tile (getf action-result :moved-tile)))
+    (make-instance 'node-metadata :tile moved-tile :cost (1+ (cost parent-metadata)) :action action)))
+
+;; TODO: Handle an illegal (nil) state instead of letting it pass
+(defun node-take-action (node action)
+  "Executes the action on the provided node, creating a new node in the process."
+  (let* ((current-state (state node))
+         (action-result (action-transform-state current-state action))
+         (new-metadata (update-metadata action action-result node)))
+    (make-instance 'puzzle-node :state (getf action-result :state)
+                                :metadata new-metadata
+                                :parent node)))
 
 ;; TODO: Try writing action-legal-p without relying on take-action (I'm not sure if this is possible)
 (defun action-legal-p (action-result)
