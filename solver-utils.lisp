@@ -21,6 +21,10 @@
 
 (defvar *action-choices* '(:up :down :left :right))
 
+(defun node-print-state (node)
+  "Prints the current state of a node as a 4x4 grid."
+  (format t "~{~{~a~6,6t~}~%~}" (state node)))
+
 ;; TODO: Consider using something possibly more efficient than nested destructuring-binds
 (defun manhattan-distance (first-point second-point)
   "Returns the Manhattan distance between two points."
@@ -61,6 +65,7 @@
 
 ;; TODO: This might be better implemented as a method
 (defun update-metadata (action action-result parent-node)
+  "Returns the updated metadata of a node after executing an action on it."
   (let ((parent-metadata (metadata parent-node))
         (moved-tile (getf action-result :moved-tile)))
     (make-instance 'node-metadata :tile moved-tile :cost (1+ (cost parent-metadata)) :action action)))
@@ -86,7 +91,7 @@
   "Checks which actions are legal (i.e. don't move off the board) to take on the current state."
   (let ((legal-actions-list ()))
     (dolist (action *action-choices*)
-      (let* ((action-result (take-action state action))
+      (let* ((action-result (action-transform-state state action))
              (result-state (getf action-result :state))
              (moved-tile (getf action-result :moved-tile)))
         (if (action-legal-p action-result)
@@ -99,6 +104,12 @@
         (frontier-states (mapcar #'state frontier))
         (explored-states (mapcar #'state explored)))
     (format t "Possible actions: ~a" legal-action-metadata)))
+
+;; TODO: Once the frontier/explored sets are implemented, add them as parameters to this
+;; and check for membership
+(defun node-legal-actions (node)
+  (let ((current-state (state node)))
+    (legal-actions current-state)))
 
 ;; TODO: Implement a way to sort the actions on a state based on their associated cost
 
