@@ -40,7 +40,7 @@
 
 (defun node-print-state (node)
   "Prints the current state of a node as a 4x4 grid."
-  (format t "~{~{~a~6,6t~}~%~}" (state node)))
+  (format t "~{~{~a~6,6t~}~%~}~%" (state node)))
 
 ;; TODO: Consider using something possibly more efficient than nested destructuring-binds
 (defun manhattan-distance (first-point second-point)
@@ -108,11 +108,9 @@
   "Checks which actions are legal (i.e. don't move off the board) to take on the current state."
   (let ((legal-actions-list ()))
     (dolist (action *action-choices*)
-      (let* ((action-result (action-transform-state state action))
-             (result-state (getf action-result :state))
-             (moved-tile (getf action-result :moved-tile)))
+      (let* ((action-result (action-transform-state state action)))
         (if (action-legal-p action-result)
-            (push (list :action action :result result-state :tile moved-tile) legal-actions-list))))
+            (push action legal-actions-list))))
     legal-actions-list))
 
 ;; TODO: Once the frontier/explored sets are implemented, add them as parameters to this
@@ -121,12 +119,14 @@
   (let ((current-state (state node)))
     (legal-actions current-state)))
 
-(defun possible-actions (state frontier explored)
-  "Returns a list of all of the possible actions that can be taken that haven't already."
-  (let ((legal-action-metadata (legal-actions state))
-        (frontier-states (mapcar #'state frontier))
-        (explored-states (mapcar #'state explored)))
-    (format t "Possible actions: ~a" legal-action-metadata)))
+(defun node-take-best-action (node)
+  "Returns the resulting node after executing the best (least costly by heuristic) action on it."
+  (let* ((legal-actions (node-legal-actions node))
+         (node-results (mapcar #'(lambda (result)
+                                     (node-take-action node result))
+                                 legal-actions))
+         (best-action (reduce #'lowest-scored-action node-results)))
+    (values best-action (remove best-action node-results))))
 
 ;; TODO: Check if all of the actions are legal and decide what to do if they aren't
 (defun take-actions-list (state actions)
