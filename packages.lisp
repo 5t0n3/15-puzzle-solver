@@ -10,7 +10,12 @@
 
 (defpackage :com.stone.solver-utils
   (:use :common-lisp :com.stone.nested-lists)
-  (:export :*goal-state*))
+  (:export :*goal-state*
+           :*minimal-goal-node*
+           :solve-node
+           :puzzle-node
+           :node-metadata
+           :initial-node-from-state))
 
 ;; Load the files in the proper order
 (load "nested-lists.lisp")

@@ -15,33 +15,6 @@
    (metadata :initarg :metadata :reader metadata))
   (:documentation "A node representing a possible state of the 15 puzzle along with other information."))
 
-;; TODO: Improve the documentation for this function
-(defgeneric node-tile-score (node tile)
-  (:documentation "Returns a rating of the cost associated with a tile in the supplied node's state."))
-
-(defmethod node-tile-score ((node puzzle-node) tile)
-  (let ((num-moves (cost (metadata node))))
-    (+ num-moves (tile-goal-distance tile (state node)))))
-
-(defgeneric lowest-scored-action (node1 node2)
-  (:documentation "Returns the node associated with the lowest cost by the node-tile-score method."))
-
-(defmethod lowest-scored-action ((node1 puzzle-node) (node2 puzzle-node))
-  (let ((node1-cost (cost (metadata node1)))
-        (node2-cost (cost (metadata node2))))
-    (if (< node1-cost node2-cost) node1 node2)))
-
-(defparameter *goal-state* '((1 2 3 4)
-                             (5 6 7 8)
-                             (9 10 11 12)
-                             (13 14 15 :empty)))
-
-(defvar *action-choices* '(:up :down :left :right))
-
-(defun node-print-state (node)
-  "Prints the current state of a node as a 4x4 grid."
-  (format t "~{~{~a~6,6t~}~%~}~%" (state node)))
-
 ;; TODO: Consider using something possibly more efficient than nested destructuring-binds
 (defun manhattan-distance (first-point second-point)
   "Returns the Manhattan distance between two points."
@@ -54,6 +27,50 @@
   (let ((goal-position (find-nested-index *goal-state* tile))
         (current-position (find-nested-index state tile)))
     (manhattan-distance current-position goal-position)))
+
+;; TODO: Improve the documentation for this function
+(defgeneric node-tile-score (node tile)
+  (:documentation "Returns a rating of the cost associated with a tile in the supplied node's state."))
+
+(defun net-tile-score (node)
+  "Returns the sum of every tile's distance from the goal."
+  (let ((node-state (state node)))
+    (loop for tile in *tile-choices* summing (tile-goal-distance tile node-state))))
+
+(defun net-node-score (node)
+  "Returns the overall score for a particular node."
+  (+ (cost (metadata node)) (net-tile-score node)))
+
+(defmethod node-tile-score ((node puzzle-node) tile)
+  (let ((num-moves (cost (metadata node))))
+    (+ num-moves (tile-goal-distance tile (state node)))))
+
+(defgeneric lowest-scored-action (node1 node2)
+  (:documentation "Returns the node associated with the lowest cost by the node-tile-score method."))
+
+(defmethod lowest-scored-action ((node1 puzzle-node) (node2 puzzle-node))
+  (let ((node1-cost (net-node-score node1))
+        (node2-cost (net-node-score node2)))
+    (if (< node1-cost node2-cost) node1 node2)))
+
+(defparameter *tile-choices* '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15))
+
+(defparameter *goal-state* '((1 2 3 4)
+                             (5 6 7 8)
+                             (9 10 11 12)
+                             (13 14 15 :empty)))
+
+(defparameter *minimal-goal-node*
+  (make-instance 'puzzle-node
+                 :state *goal-state*
+                 :parent nil
+                 :metadata (make-instance 'node-metadata :action :none)))
+
+(defvar *action-choices* '(:up :down :left :right))
+
+(defun node-print-state (node)
+  "Prints the current state of a node as a 4x4 grid."
+  (format t "~{~{~a~6,6t~}~%~}~% (cost: ~a)~%" (state node) (net-node-score node)))
 
 (defun empty-location (state)
   "Returns the location of the :EMPTY space in the puzzle."
@@ -116,17 +133,80 @@
 ;; TODO: Once the frontier/explored sets are implemented, add them as parameters to this
 ;; and check for membership
 (defun node-legal-actions (node)
+  "Checks which actions are legal to take on a given node's state."
   (let ((current-state (state node)))
     (legal-actions current-state)))
 
-(defun node-take-best-action (node)
+(defun node-state-equal-p (node1 node2)
+  "Checks if two nodes have equivalent states."
+  (equal (state node1) (state node2)))
+
+(defun goal-state-p (node)
+  "Checks if a given node's state is a goal state."
+  (let ((current-state (state node)))
+    (equal *goal-state* current-state)))
+
+;; TODO: Clean up this function by refactoring
+;; I definitely seem to use :test #'node-state-equal-p a ton
+(defun node-take-best-action (node frontier explored)
   "Returns the resulting node after executing the best (least costly by heuristic) action on it."
   (let* ((legal-actions (node-legal-actions node))
          (node-results (mapcar #'(lambda (result)
-                                     (node-take-action node result))
-                                 legal-actions))
-         (best-action (reduce #'lowest-scored-action node-results)))
-    (values best-action (remove best-action node-results))))
+                                   (node-take-action node result))
+                               legal-actions))
+         (unvisited-nodes (remove-if #'(lambda (node)
+                                         (or (member node frontier :test #'node-state-equal-p)
+                                             (member node explored :test #'node-state-equal-p)))
+                                     node-results))
+         (best-action (if (member *minimal-goal-node* unvisited-nodes :test #'node-state-equal-p)
+                          (find *minimal-goal-node* unvisited-nodes :test #'node-state-equal-p)
+                          (if (null unvisited-nodes)
+                              (return-from node-take-best-action (values nil nil))
+                              (reduce #'lowest-scored-action unvisited-nodes)))))
+    (format t "Best action:~%")
+    (node-print-state best-action)
+    (values best-action (remove best-action unvisited-nodes :test #'node-state-equal-p))))
+
+(defun traverse-actions (node)
+  "Traverses the actions leading up to the node and creates a list out of them."
+  (nreverse (loop for current-node = node then (parent current-node)
+                  collect (previous-action (metadata current-node))
+                  until (null (parent current-node)))))
+
+(defun next-valid-node (best-node frontier)
+  (or best-node (reduce #'lowest-scored-action frontier)))
+
+
+(defun solve-from-node (node)
+  "Solves the puzzle starting at a given node."
+  (let ((frontier (list node))
+        (explored '()))
+    (loop for current-node = node then (next-valid-node best-node frontier)
+          for (best-node other-nodes) = (multiple-value-list (node-take-best-action current-node
+                                                                                    frontier
+                                                                                    explored))
+          for i = 1 then (1+ i)
+          do (format t "Iteration ~a~%" i)
+          do (progn
+               (format t "Current state:~%")
+               (node-print-state current-node))
+          if (null best-node)
+            do (format t "Current node in frontier: ~a" (not (null (member current-node
+                                                                           frontier
+                                                                           :test #'node-state-equal-p))))
+          do (pushnew current-node explored :test #'node-state-equal-p)
+          do (setf frontier (remove current-node frontier :test #'node-state-equal-p))
+          until (goal-state-p current-node)
+          do (setf frontier (append frontier other-nodes))
+          while (not (null frontier))
+          finally (return (traverse-actions current-node)))))
+
+(defun initial-node-from-state (state)
+  "Makes an initial node with the given state."
+  (make-instance 'puzzle-node :state state
+                              :parent nil
+                              :metadata (make-instance 'node-metadata
+                                                       :action :start)))
 
 ;; TODO: Check if all of the actions are legal and decide what to do if they aren't
 (defun take-actions-list (state actions)
