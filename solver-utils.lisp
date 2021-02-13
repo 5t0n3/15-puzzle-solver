@@ -1,5 +1,20 @@
 (in-package :com.stone.solver-utils)
 
+(defparameter *tile-choices* '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15))
+
+(defparameter *goal-state* '((1 2 3 4)
+                             (5 6 7 8)
+                             (9 10 11 12)
+                             (13 14 15 :empty)))
+
+(defparameter *minimal-goal-node*
+  (make-instance 'puzzle-node
+                 :state *goal-state*
+                 :parent nil
+                 :metadata (make-instance 'node-metadata :action :none)))
+
+(defvar *action-choices* '(:up :down :left :right))
+
 ;; TODO: Implement error handling of illegal moves rather than just returning nil as the state
 
 ;; TODO: Consider renaming cost slot to something more descriptive
@@ -52,21 +67,6 @@
   (let ((node1-cost (net-node-score node1))
         (node2-cost (net-node-score node2)))
     (if (< node1-cost node2-cost) node1 node2)))
-
-(defparameter *tile-choices* '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15))
-
-(defparameter *goal-state* '((1 2 3 4)
-                             (5 6 7 8)
-                             (9 10 11 12)
-                             (13 14 15 :empty)))
-
-(defparameter *minimal-goal-node*
-  (make-instance 'puzzle-node
-                 :state *goal-state*
-                 :parent nil
-                 :metadata (make-instance 'node-metadata :action :none)))
-
-(defvar *action-choices* '(:up :down :left :right))
 
 (defun node-print-state (node)
   "Prints the current state of a node as a 4x4 grid."
@@ -176,7 +176,6 @@
 (defun next-valid-node (best-node frontier)
   (or best-node (reduce #'lowest-scored-action frontier)))
 
-
 (defun solve-from-node (node)
   "Solves the puzzle starting at a given node."
   (let ((frontier (list node))
@@ -186,20 +185,14 @@
                                                                                     frontier
                                                                                     explored))
           for i = 1 then (1+ i)
-          do (format t "Iteration ~a~%" i)
-          do (progn
-               (format t "Current state:~%")
-               (node-print-state current-node))
-          if (null best-node)
-            do (format t "Current node in frontier: ~a" (not (null (member current-node
-                                                                           frontier
-                                                                           :test #'node-state-equal-p))))
           do (pushnew current-node explored :test #'node-state-equal-p)
           do (setf frontier (remove current-node frontier :test #'node-state-equal-p))
           until (goal-state-p current-node)
           do (setf frontier (append frontier other-nodes))
           while (not (null frontier))
-          finally (return (traverse-actions current-node)))))
+          finally (progn
+                    (format t "Total iterations: ~a~%" i)
+                    (return (traverse-actions current-node))))))
 
 (defun initial-node-from-state (state)
   "Makes an initial node with the given state."
